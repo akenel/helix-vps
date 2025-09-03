@@ -1,0 +1,183 @@
+# docker-compose.yml
+# PoC middleware stack for laptop/DO droplet.
+# Lightweight defaults, comments inline.
+
+services:
+
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --log.level=INFO
+      - --providers.docker.exposedbydefault=false
+    ports:
+      - "80:80"      # http
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - alpinenet
+
+  vault:
+    image: vault:1.13.2
+    container_name: vault
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+    command: "server -dev -dev-root-token-id=root"   # dev mode only
+    ports:
+      - "8200:8200"
+    networks:
+      - alpinenet
+    mem_limit: 300m
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - alpinenet
+    mem_limit: 400m
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - alpinenet
+    mem_limit: 700m
+
+  mongo:
+    image: mongo:6.0
+    container_name: mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongodata:/data/db
+    networks:
+      - alpinenet
+    mem_limit: 700m
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1"]
+    networks:
+      - alpinenet
+    mem_limit: 200m
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      DB_TYPE: postgres
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      N8N_HOST: n8n.local
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      GENERIC_TIMEZONE: "Europe/Zurich"
+      N8N_BASIC_AUTH_ACTIVE: "false"
+    ports:
+      - "5678:5678"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - alpinenet
+    mem_limit: 700m
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`n8n.local`)"
+      - "traefik.http.routers.n8n.entrypoints=web"
+
+  # Ollama with TinyLlama (local lightweight dev mode)
+  # Ollama with TinyLlama (local lightweight dev mode)
+  ollama-tiny:
+    image: ollama/ollama:latest
+    container_name: ollama-tiny
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"   # Tiny exposed on 11434
+    networks:
+      - alpinenet
+    environment:
+      OLLAMA_MODEL: "tinyllama"
+    command: >
+      sh -c "ollama serve & sleep 5 && ollama pull tinyllama && tail -f /dev/null"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ollama-tiny.rule=Host(`tiny.llm.local`)"
+      - "traefik.http.routers.ollama-tiny.entrypoints=web"
+
+  # Ollama Turbo (simulated GPU-backed mode)
+  ollama-turbo:
+    image: ollama/ollama:latest
+    container_name: ollama-turbo
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11435:11434"   # Turbo exposed on 11435 (mapped from 11434 inside)
+    networks:
+      - alpinenet
+    environment:
+      OLLAMA_MODEL: "turbo"
+    command: >
+      sh -c "ollama serve & sleep 5 && ollama pull turbo && tail -f /dev/null"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ollama-turbo.rule=Host(`turbo.llm.local`)"
+      - "traefik.http.routers.ollama-turbo.entrypoints=web"
+
+
+  web-ui:
+    image: nginx:stable-alpine
+    container_name: demo-ui
+    restart: unless-stopped
+    volumes:
+      - ./ui/:/usr/share/nginx/html:ro
+    ports:
+      - "3000:80"
+    networks:
+      - alpinenet
+    mem_limit: 150m
+
+networks:
+  alpinenet:
+    driver: bridge
+
+volumes:
+  minio-data:
+  pgdata:
+  mongodata:
+  ollama-data:
