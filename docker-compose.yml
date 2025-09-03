@@ -6,6 +6,7 @@ services:
 
   traefik:
     image: traefik:v2.11
+    profiles: ["core"]
     container_name: traefik
     restart: unless-stopped
     command:
@@ -25,6 +26,7 @@ services:
 
   vault:
     image: vault:1.13.2
+    profiles: ["extra"]
     container_name: vault
     restart: unless-stopped
     environment:
@@ -38,6 +40,7 @@ services:
 
   minio:
     image: minio/minio:latest
+    profiles: ["extra"]
     container_name: minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -54,7 +57,8 @@ services:
     mem_limit: 400m
 
   postgres:
-    image: postgres:15
+    image: postgres:17
+    profiles: ["core"]
     container_name: postgres
     restart: unless-stopped
     environment:
@@ -69,6 +73,7 @@ services:
 
   mongo:
     image: mongo:6.0
+    profiles: ["extra"]
     container_name: mongodb
     restart: unless-stopped
     environment:
@@ -82,6 +87,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    profiles: ["core"]
     container_name: redis
     restart: unless-stopped
     command: ["redis-server", "--save", "60", "1"]
@@ -91,6 +97,7 @@ services:
 
   n8n:
     image: n8nio/n8n:latest
+    profiles: ["core"]
     container_name: n8n
     restart: unless-stopped
     environment:
@@ -122,6 +129,7 @@ services:
   # Ollama with TinyLlama (local lightweight dev mode)
   ollama-tiny:
     image: ollama/ollama:latest
+    profiles: ["tiny"]
     container_name: ollama-tiny
     restart: unless-stopped
     volumes:
@@ -142,6 +150,7 @@ services:
   # Ollama Turbo (simulated GPU-backed mode)
   ollama-turbo:
     image: ollama/ollama:latest
+    profiles: ["turbo"]
     container_name: ollama-turbo
     restart: unless-stopped
     volumes:
@@ -162,6 +171,7 @@ services:
 
   web-ui:
     image: nginx:stable-alpine
+    profiles: ["core"]
     container_name: demo-ui
     restart: unless-stopped
     volumes:
