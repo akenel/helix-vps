@@ -1,0 +1,31 @@
+tls:
+  certificates:
+    - certFile: "/etc/traefik/certs/helix-do-local.pem"
+      keyFile: "/etc/traefik/certs/helix-do-local-key.pem"
+
+http:
+  routers:
+    n8n:
+      rule: "Host(`n8n.helix.local`)"
+      entryPoints:
+        - websecure
+      service: n8n-service
+      tls: {}
+
+    ollama:
+      rule: "Host(`ollama.helix.local`)"
+      entryPoints:
+        - websecure
+      service: ollama-service
+      tls: {}
+
+  services:
+    n8n-service:
+      loadBalancer:
+        servers:
+          - url: "http://n8n:5678"
+
+    ollama-service:
+      loadBalancer:
+        servers:
+          - url: "http://ollama-turbo:11434"

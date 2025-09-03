@@ -1,0 +1,34 @@
+# traefik-dynamic.yml
+http:
+  routers:
+    n8n-router:
+      rule: "Host(`n8n.helix.do.local`)"
+      entryPoints:
+        - "websecure"
+      service: "n8n"
+      tls:
+        certResolver: "mkcert-resolver"
+
+    ollama-turbo-router:
+      rule: "Host(`turbo.helix.do.local`)"
+      entryPoints:
+        - "websecure"
+      service: "ollama-turbo"
+      tls:
+        certResolver: "mkcert-resolver"
+
+  services:
+    n8n:
+      loadBalancer:
+        servers:
+          - url: "http://n8n:5678"
+    ollama-turbo:
+      loadBalancer:
+        servers:
+          - url: "http://ollama-turbo:11434"
+
+certificatesResolvers:
+  mkcert-resolver:
+    file:
+      filePath: "/traefik/config" # Not needed for mkcert, but good practice
+      # You can ignore this for mkcert, would normally configure let's encrypt here

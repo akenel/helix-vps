@@ -10,17 +10,24 @@ services:
     container_name: traefik
     restart: unless-stopped
     command:
+      - --api.dashboard=true
       - --api.insecure=true
       - --providers.docker=true
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --log.level=INFO
       - --providers.docker.exposedbydefault=false
     ports:
       - "80:80"      # http
+      - "443:443"    # https
       - "8080:8080"  # Traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik
+      - ./traefik/config:/etc/traefik/config:ro
+      - ./traefik/certs:/etc/traefik/certs:ro # We will place the certs here
     networks:
       - alpinenet
 
@@ -120,10 +127,7 @@ services:
     networks:
       - alpinenet
     mem_limit: 700m
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.n8n.rule=Host(`n8n.local`)"
-      - "traefik.http.routers.n8n.entrypoints=web"
+
 
   # Ollama with TinyLlama (local lightweight dev mode)
   # Ollama with TinyLlama (local lightweight dev mode)
@@ -142,10 +146,6 @@ services:
       OLLAMA_MODEL: "tinyllama"
     command: >
       sh -c "ollama serve & sleep 5 && ollama pull tinyllama && tail -f /dev/null"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ollama-tiny.rule=Host(`tiny.llm.local`)"
-      - "traefik.http.routers.ollama-tiny.entrypoints=web"
 
   # Ollama Turbo (simulated GPU-backed mode)
   ollama-turbo:
@@ -155,19 +155,12 @@ services:
     restart: unless-stopped
     volumes:
       - ollama-data:/root/.ollama
-    ports:
-      - "11435:11434"   # Turbo exposed on 11435 (mapped from 11434 inside)
     networks:
       - alpinenet
     environment:
       OLLAMA_MODEL: "turbo"
     command: >
       sh -c "ollama serve & sleep 5 && ollama pull turbo && tail -f /dev/null"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ollama-turbo.rule=Host(`turbo.llm.local`)"
-      - "traefik.http.routers.ollama-turbo.entrypoints=web"
-
 
   web-ui:
     image: nginx:stable-alpine
