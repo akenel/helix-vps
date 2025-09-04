@@ -12,6 +12,13 @@ http:
       service: n8n-service
       tls: {}
 
+    vault:
+      rule: "Host(`vault.helix.local`)"
+      entryPoints:
+        - websecure
+      service: vault-service
+      tls: {}
+
     ollama:
       rule: "Host(`ollama.helix.local`)"
       entryPoints:
@@ -32,6 +39,11 @@ http:
         servers:
           - url: "http://n8n:5678"
 
+    vault-service:
+      loadBalancer:
+        servers:
+          - url: "http://vault:8200"
+
     ollama-service:
       loadBalancer:
         servers:
@@ -41,3 +53,5 @@ http:
       loadBalancer:
         servers:
           - url: "http://kong:8000"
+
+
