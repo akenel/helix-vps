@@ -102,11 +102,13 @@ services:
       - alpinenet
     mem_limit: 200m
 
+
   n8n:
     image: n8nio/n8n:latest
     profiles: ["core"]
     container_name: n8n
     restart: unless-stopped
+ 
     environment:
       DB_TYPE: postgres
       DB_POSTGRESDB_HOST: postgres
@@ -114,13 +116,16 @@ services:
       DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
       DB_POSTGRESDB_USER: ${POSTGRES_USER}
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
-      N8N_HOST: n8n.local
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
+      N8N_HOST: n8n.helix.local
+      N8N_PORT: 5678          # keep this internal port
+      N8N_PROTOCOL: http      # internal traffic stays http
+      WEBHOOK_URL: https://n8n.helix.local/   # external URL override
       GENERIC_TIMEZONE: "Europe/Zurich"
       N8N_BASIC_AUTH_ACTIVE: "false"
-    ports:
-      - "5678:5678"
+
+    # Remove the ports mapping here, as Traefik handles the exposure
+    # ports:
+    #   - "5678:5678"
     depends_on:
       - postgres
       - redis
@@ -128,6 +133,18 @@ services:
       - alpinenet
     mem_limit: 700m
 
+  portainer:
+    image: portainer/portainer-ce:latest
+    profiles: ["core"]
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    networks:
+      - alpinenet
 
   # Ollama with TinyLlama (local lightweight dev mode)
   # Ollama with TinyLlama (local lightweight dev mode)
@@ -174,6 +191,23 @@ services:
     networks:
       - alpinenet
     mem_limit: 150m
+  kong:
+    image: kong:3.6
+    profiles: ["core"]
+    container_name: kong
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/config/kong.yaml # path inside container
+      KONG_PROXY_LISTEN: "0.0.0.0:8000"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_LOG_LEVEL: "notice"
+    volumes:
+      - ./kong:/kong:ro
+    ports:
+      - "8001:8001"  # admin (keep firewalled / local)
+    networks:
+      - alpinenet
 
 networks:
   alpinenet:
@@ -184,3 +218,4 @@ volumes:
   pgdata:
   mongodata:
   ollama-data:
+  portainer_data:

@@ -1,6 +1,14 @@
 # traefik-dynamic.yml
 http:
   routers:
+
+    traefik:
+      rule: "Host(`traefik.helix.do.local`)"
+      entryPoints:
+        - websecure
+      service: api@internal
+      tls: {}
+
     n8n-router:
       rule: "Host(`n8n.helix.do.local`)"
       entryPoints:
@@ -17,6 +25,14 @@ http:
       tls:
         certResolver: "mkcert-resolver"
 
+    portainer-router:
+      rule: "Host(`portainer.helix.local`)"
+      entryPoints:
+        - "websecure"
+      service: "portainer"
+      tls:
+        certResolver: "mkcert-resolver"
+
   services:
     n8n:
       loadBalancer:
@@ -26,7 +42,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://ollama-turbo:11434"
-
+    portainer:
+      loadBalancer:
+        servers:
+          - url: "http://portainer:9000"
 certificatesResolvers:
   mkcert-resolver:
     file:

@@ -18,6 +18,13 @@ http:
         - websecure
       service: ollama-service
       tls: {}
+    
+    kong:
+      rule: "Host(`api.helix.local`)"
+      entryPoints:
+        - websecure
+      service: kong-service
+      tls: {}
 
   services:
     n8n-service:
@@ -29,3 +36,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://ollama-turbo:11434"
+
+    kong-service:
+      loadBalancer:
+        servers:
+          - url: "http://kong:8000"
